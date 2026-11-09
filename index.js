@@ -51,6 +51,7 @@ const CONFIG = {
     ROLES_CHANNEL: '🎭-rollen',
     DEFAULT_ROLE: 'Spieler',
     TEAM_ROLE: 'Mod',
+    WEBSITE_URL: 'https://komisann.netlify.app/',
     EMOTES: {
         welcome: 'only_love_256px',
         protect: 'protect_256px',
@@ -228,29 +229,12 @@ function isStaff(member) {
 client.once('ready', () => {
     console.log(`[ONLINE] NetRunner ist erfolgreich eingeloggt als ${client.user.tag}`);
     client.user.setActivity('KomisAnN & S.A.RP', { type: 3 });
-
-    const guilds = [...client.guilds.cache.values()];
-    if (!guilds.length) {
-        console.log('[EMOTES] Bot ist in keinem Server.');
-        return;
-    }
-
-    for (const guild of guilds) {
-        const lines = EMOJI_NAMES.map((name) => {
-            const emoji = findNamedEmote(guild, name);
-            return emoji ? emoji.toString() : `:${name}: fehlt`;
-        });
-        console.log(`[EMOTES] ${guild.name}: ${lines.join(' | ')}`);
-    }
 });
 
 client.on('guildMemberAdd', async (member) => {
     try {
         const role = member.guild.roles.cache.find((entry) => entry.name === CONFIG.DEFAULT_ROLE);
-        if (role) {
-            await member.roles.add(role);
-            console.log(`[ROLLE] ${member.user.tag} hat automatisch die Rolle '${CONFIG.DEFAULT_ROLE}' erhalten.`);
-        }
+        if (role) await member.roles.add(role);
     } catch (error) {
         console.error('[FEHLER BEIM JOIN]', error);
     }
@@ -260,10 +244,7 @@ client.on('guildMemberAdd', async (member) => {
         if (!welcomeChannel) return;
 
         const love = emoteText(member.guild, 'welcome', '💚');
-        const protect = emoteText(member.guild, 'protect', '🛡️');
-        const crystal = emoteText(member.guild, 'rules', '💎');
         const node = emoteText(member.guild, 'network', '🔗');
-        const memberEmote = emoteText(member.guild, 'member', '👤');
         const rulesChannel = findTextChannel(member.guild, 'regeln');
         const rolesChannel = findTextChannel(member.guild, 'rollen');
         const rulesMention = rulesChannel ? `<#${rulesChannel.id}>` : '#regeln';
@@ -275,17 +256,17 @@ client.on('guildMemberAdd', async (member) => {
             .setDescription(
                 `${node} Du hast dich erfolgreich in den **KomisAnN**-Server eingeloggt.\n\n` +
                 `> **Nächste Schritte:**\n` +
-                `> • ${crystal} Lies dir die Protokolle in ${rulesMention} durch.\n` +
-                `> • ${protect} Hol dir deine Berechtigungen in ${rolesMention}.\n\n` +
-                `${memberEmote} Viel Erfolg im System!`
+                `> • Lies die Protokolle in ${rulesMention}.\n` +
+                `> • Hol dir deine Rollen in ${rolesMention}.\n` +
+                `> • Besuche auch unsere Web-Präsenz: [KomisAnN Website](${CONFIG.WEBSITE_URL})\n\n` +
+                `Viel Erfolg im System!`
             )
             .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
-            .setFooter({ text: `NetRunner Security Protocol v2.6 • User ID: ${member.id}` })
             .setTimestamp();
 
         await welcomeChannel.send({ embeds: [embed] });
     } catch (error) {
-        console.error('[FEHLER] Willkommensnachricht konnte nicht gesendet werden:', error);
+        console.error('[FEHLER] Willkommensnachricht:', error);
     }
 });
 
@@ -301,9 +282,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
     const member = await guild.members.fetch(user.id).catch(() => null);
     const role = guild.roles.cache.find((r) => r.name === roleName);
 
-    if (role && member) {
-        await member.roles.add(role).catch((err) => console.error('[ROLE ADD ERROR]', err));
-    }
+    if (role && member) await member.roles.add(role).catch(() => {});
 });
 
 client.on('messageReactionRemove', async (reaction, user) => {
@@ -318,27 +297,33 @@ client.on('messageReactionRemove', async (reaction, user) => {
     const member = await guild.members.fetch(user.id).catch(() => null);
     const role = guild.roles.cache.find((r) => r.name === roleName);
 
-    if (role && member) {
-        await member.roles.remove(role).catch((err) => console.error('[ROLE REMOVE ERROR]', err));
-    }
+    if (role && member) await member.roles.remove(role).catch(() => {});
 });
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild || !message.member) return;
+
+    // NEU: Befehl !webseite
+    if (message.content === '!webseite') {
+        const linkEmote = emoteText(message.guild, 'link', '🔗');
+        const embed = new EmbedBuilder()
+            .setColor(0x39FF14)
+            .setTitle(`${linkEmote} KomisAnN & NetRunner Portal`)
+            .setDescription(`Besuche unsere offizielle Webpräsenz für alle Infos, Updates und Projekte:\n\n👉 **[Hier geht es zur Website](${CONFIG.WEBSITE_URL})**`)
+            .setFooter({ text: 'NetRunner Web Gateway' })
+            .setTimestamp();
+
+        await message.channel.send({ embeds: [embed] }).catch(() => {});
+        return;
+    }
 
     if (message.content === '!setup-ticket') {
         if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return;
         await message.delete().catch(() => {});
 
         const ticketChannel = findTextChannel(message.guild, 'ticket-erstellen');
-        const glitch = emoteText(message.guild, 'error', '⚠️');
-        if (!ticketChannel) {
-            await note(message.channel, `${glitch} Kanal \`${CONFIG.TICKET_CHANNEL}\` wurde nicht gefunden.`);
-            return;
-        }
+        if (!ticketChannel) return;
 
-        const ticketEmote = emoteText(message.guild, 'ticket', '🎯');
-        const radarEmote = emoteText(message.guild, 'status', '📡');
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('create_ticket')
@@ -349,14 +334,10 @@ client.on('messageCreate', async (message) => {
 
         const embed = new EmbedBuilder()
             .setColor(0x39FF14)
-            .setTitle(`${ticketEmote} Support-Ticket erstellen`)
-            .setDescription('Klicke auf den grünen Button, um ein privates Ticket für dich und das Team zu öffnen.')
-            .setFooter({ text: 'NetRunner Support' });
+            .setTitle('🎯 Support-Ticket erstellen')
+            .setDescription('Klicke auf den grünen Button, um ein privates Ticket zu öffnen.');
 
         await ticketChannel.send({ embeds: [embed], components: [row] });
-        if (message.channel.id !== ticketChannel.id) {
-            await note(message.channel, `${radarEmote} Ticket-Button wurde in ${ticketChannel} gespawnt.`);
-        }
         return;
     }
 
@@ -370,16 +351,7 @@ client.on('messageCreate', async (message) => {
         const embed = new EmbedBuilder()
             .setColor(0x39FF14)
             .setTitle('🎭 Interessen- & Benachrichtigungs-Rollen')
-            .setDescription(
-                'Reagiere mit den entsprechenden Emojis, um dir deine Rollen zuzuweisen:\n\n' +
-                '🎮 → Gamer\n' +
-                '🤖 → KI-Skripter\n' +
-                '🧠 → KI-Nutzer\n\n' +
-                '🔔 → Ankündigungen\n' +
-                '🎲 → Game-Ping\n' +
-                '🎁 → Giveaway'
-            )
-            .setFooter({ text: 'NetRunner Role Management' });
+            .setDescription('Reagiere mit Emojis, um dir Rollen zuzuweisen:\n\n🎮 → Gamer\n🤖 → KI-Skripter\n🧠 → KI-Nutzer\n🔔 → Ankündigungen\n🎲 → Game-Ping\n🎁 → Giveaway');
 
         const msg = await rolesChannel.send({ embeds: [embed] });
         for (const e of ['🎮', '🤖', '🧠', '🔔', '🎲', '🎁']) {
@@ -392,29 +364,10 @@ client.on('messageCreate', async (message) => {
 
     const hosts = phishingHosts(message.content);
     if (hosts.length) {
-        const banEmote = emoteText(message.guild, 'ban', '⛔');
-        const contentPreview = message.content.slice(0, 500);
         await message.delete().catch(() => {});
-
-        let banned = false;
         if (message.member.bannable) {
-            banned = await message.member.ban({
-                deleteMessageSeconds: 86400,
-                reason: `NetRunner: Phishing-Link (${hosts.join(', ')})`
-            }).then(() => true).catch(() => false);
+            await message.member.ban({ deleteMessageSeconds: 86400, reason: 'NetRunner: Phishing-Link' }).catch(() => {});
         }
-
-        await sendModLog(message.guild, new EmbedBuilder()
-            .setColor(0xFF0000)
-            .setTitle(`${banEmote} NetRunner AutoMod: Sofort-Ban (Phishing)`)
-            .addFields(
-                { name: 'User', value: `<@${message.author.id}> (${message.author.tag})`, inline: true },
-                { name: 'Kanal', value: `<#${message.channel.id}>`, inline: true },
-                { name: 'Ban', value: banned ? 'ausgeführt' : '⚠️ nicht möglich', inline: true },
-                { name: 'Host', value: hosts.join(', ').slice(0, 1000) },
-                { name: 'Nachricht', value: contentPreview || '—' }
-            )
-            .setTimestamp());
         return;
     }
 
@@ -423,10 +376,6 @@ client.on('messageCreate', async (message) => {
     if (!caps && !spam.hit) return;
 
     const key = punishmentKey(message.guild.id, message.author.id);
-    const reason = caps ? 'NetRunner: Caps' : 'NetRunner: Spam';
-    const warningEmote = emoteText(message.guild, 'warn', '⚠️');
-    const caseEmote = emoteText(message.guild, caps ? 'caps' : 'spam', caps ? '💥' : '🔥');
-
     if (spam.hit) await deleteSpamMessages(message, spam.messages);
     await message.delete().catch(() => {});
 
@@ -434,23 +383,11 @@ client.on('messageCreate', async (message) => {
     activePunishments.add(key);
     setTimeout(() => activePunishments.delete(key), TIMEOUT_MS);
 
-    let timedOut = false;
     if (message.member.moderatable) {
-        timedOut = await message.member.timeout(TIMEOUT_MS, reason).then(() => true).catch(() => false);
+        await message.member.timeout(TIMEOUT_MS, caps ? 'NetRunner: Caps' : 'NetRunner: Spam').catch(() => {});
     }
 
-    await note(message.channel, `${warningEmote} <@${message.author.id}>, ${caps ? 'Caps' : 'Spam'} ist nicht erlaubt. Timeout: 10 Minuten.`);
-
-    await sendModLog(message.guild, new EmbedBuilder()
-        .setColor(0xFFA500)
-        .setTitle(`${caseEmote} NetRunner AutoMod: ${caps ? 'Caps' : 'Spam'}`)
-        .addFields(
-            { name: 'User', value: `<@${message.author.id}>`, inline: true },
-            { name: 'Kanal', value: `<#${message.channel.id}>`, inline: true },
-            { name: 'Timeout', value: timedOut ? '10 Minuten' : '⚠️ nicht möglich', inline: true },
-            { name: 'Nachricht', value: message.content.slice(0, 1000) || '—' }
-        )
-        .setTimestamp());
+    await note(message.channel, `⚠️ <@${message.author.id}>, ${caps ? 'Caps' : 'Spam'} ist nicht erlaubt.`);
 });
 
 client.on('interactionCreate', async (interaction) => {
@@ -460,112 +397,55 @@ client.on('interactionCreate', async (interaction) => {
         const guild = interaction.guild;
         const member = interaction.member;
         const channelName = ticketChannelName(member.user.username);
-        const existingChannel = guild.channels.cache.find((channel) => channel.name === channelName);
-
-        if (existingChannel) {
-            const full = emoteText(guild, 'full', '📁');
-            await interaction.reply({ content: `${full} Du hast bereits ein offenes Ticket: ${existingChannel}`, ephemeral: true });
+        if (guild.channels.cache.find((c) => c.name === channelName)) {
+            await interaction.reply({ content: '📁 Du hast bereits ein offenes Ticket.', ephemeral: true });
             return;
         }
 
         await interaction.deferReply({ ephemeral: true });
-
         try {
-            const ticketEmote = emoteText(guild, 'ticket', '🎯');
-            const radarEmote = emoteText(guild, 'status', '📡');
-            const linkEmote = emoteText(guild, 'link', '🔗');
-            const staffEmote = emoteText(guild, 'staff', '👑');
-            const teamRole = guild.roles.cache.find((role) => role.name === CONFIG.TEAM_ROLE);
-
-            const permissionOverwrites = [
+            const teamRole = guild.roles.cache.find((r) => r.name === CONFIG.TEAM_ROLE);
+            const overwrites = [
                 { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-                {
-                    id: member.id,
-                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles]
-                },
-                {
-                    id: client.user.id,
-                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ReadMessageHistory]
-                }
+                { id: member.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+                { id: client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ReadMessageHistory] }
             ];
-
             if (teamRole) {
-                permissionOverwrites.push({
-                    id: teamRole.id,
-                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageMessages, PermissionFlagsBits.AttachFiles]
-                });
+                overwrites.push({ id: teamRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
             }
 
-            const ticketChannel = await guild.channels.create({
-                name: channelName,
-                type: ChannelType.GuildText,
-                permissionOverwrites
-            });
-
-            const closeButton = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId('close_ticket')
-                    .setLabel('Ticket schließen')
-                    .setStyle(ButtonStyle.Danger)
-            );
-
-            const ticketEmbed = new EmbedBuilder()
-                .setColor(0x39FF14)
-                .setTitle(`${ticketEmote} NetRunner Support-Ticket`)
-                .setDescription(
-                    `Hallo <@${member.id}>!\n` +
-                    `${staffEmote} Das Team wurde benachrichtigt. Schildere hier kurz dein Anliegen.\n` +
-                    `Mit **Ticket schließen** wird der Kanal nach 5 Sekunden gelöscht.`
-                );
-
+            const ticketChannel = await guild.channels.create({ name: channelName, type: ChannelType.GuildText, permissionOverwrites: overwrites });
+            const closeBtn = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('close_ticket').setLabel('Ticket schließen').setStyle(ButtonStyle.Danger));
+            
             await ticketChannel.send({
-                content: teamRole ? `${member} ${staffEmote} ${teamRole}` : `${member}`,
-                embeds: [ticketEmbed],
-                components: [closeButton]
+                content: teamRole ? `${member} ${teamRole}` : `${member}`,
+                embeds: [new EmbedBuilder().setColor(0x39FF14).setTitle('🎯 Support-Ticket').setDescription('Sildere hier dein Anliegen.')],
+                components: [closeBtn]
             });
-            await interaction.editReply({ content: `${radarEmote} Dein Ticket wurde erstellt: ${ticketChannel}` });
-
-            const ticketLogChannel = findTextChannel(guild, 'ticket-log');
-            if (ticketLogChannel) {
-                await ticketLogChannel.send(`${linkEmote} Ticket geöffnet von <@${member.id}>: ${ticketChannel}`);
-            }
-        } catch (error) {
-            console.error('[TICKET]', error);
-            await interaction.editReply({ content: '⚠️ Fehler beim Erstellen des Tickets.' }).catch(() => {});
+            await interaction.editReply({ content: `📡 Ticket erstellt: ${ticketChannel}` });
+        } catch (e) {
+            await interaction.editReply({ content: '⚠️ Fehler beim Erstellen.' }).catch(() => {});
         }
         return;
     }
 
     if (interaction.customId === 'close_ticket') {
         const channel = interaction.channel;
-        const linkEmote = emoteText(interaction.guild, 'link', '🔗');
-        const radarEmote = emoteText(interaction.guild, 'status', '📡');
-        const ticketLogChannel = findTextChannel(interaction.guild, 'ticket-log');
-
-        if (ticketLogChannel) {
-            await ticketLogChannel.send(`${linkEmote} Ticket geschlossen von <@${interaction.user.id}>: \`${channel.name}\``);
-        }
-
-        await interaction.reply({ content: `${radarEmote} Ticket wird in 5 Sekunden geschlossen...` });
-        setTimeout(() => {
-            channel.delete().catch(() => {});
-        }, 5000);
+        await interaction.reply({ content: '📡 Ticket wird in 5 Sekunden geschlossen...' });
+        setTimeout(() => channel.delete().catch(() => {}), 5000);
     }
 });
 
-// ==========================================
-// EXPRESS WEB-SERVER (Gegen das Einschlafen)
-// ==========================================
+// Express Web-Server für UptimeRobot (Verhindert das Einschlafen)
 const app = express();
 const port = process.env.PORT || 10000;
 
 app.get('/', (req, res) => {
-    res.send('NetRunner Bot ist online, wach und betriebsbereit!');
+    res.send('NetRunner Bot ist online und wach!');
 });
 
 app.listen(port, () => {
     console.log(`[HTTP] Express Webserver läuft auf Port ${port}`);
 });
 
-// Bot bei Discord einloggen
 client.login(process.env.DISCORD_TOKEN);
