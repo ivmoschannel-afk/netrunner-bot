@@ -1,4 +1,5 @@
 require('dotenv').config();
+const express = require('express');
 const {
     Client,
     GatewayIntentBits,
@@ -90,7 +91,6 @@ const EMOJI_NAMES = [
     'Radar_256px'
 ];
 
-// Exakte Rollennamen passend zu deinem Server-Screenshot
 const ROLE_MAPPING = {
     '🎮': '🎮 Gamer',
     '🤖': '🤖 KI-Skripter',
@@ -295,7 +295,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
     if (reaction.message.partial) await reaction.message.fetch();
 
     const roleName = ROLE_MAPPING[reaction.emoji.name];
-    console.log(`[REACTION ADD] User ${user.tag} klickte ${reaction.emoji.name} -> Suche Rolle: '${roleName}'`);
     if (!roleName) return;
 
     const guild = reaction.message.guild;
@@ -304,9 +303,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
     if (role && member) {
         await member.roles.add(role).catch((err) => console.error('[ROLE ADD ERROR]', err));
-        console.log(`[ROLES] ${user.tag} hat erfolgreich die Rolle '${roleName}' erhalten.`);
-    } else {
-        console.log(`[ROLES FEHLER] Rolle '${roleName}' nicht gefunden oder Mitglied ungültig!`);
     }
 });
 
@@ -324,7 +320,6 @@ client.on('messageReactionRemove', async (reaction, user) => {
 
     if (role && member) {
         await member.roles.remove(role).catch((err) => console.error('[ROLE REMOVE ERROR]', err));
-        console.log(`[ROLES] ${user.tag} hat die Rolle '${roleName}' entfernt.`);
     }
 });
 
@@ -333,7 +328,6 @@ client.on('messageCreate', async (message) => {
 
     if (message.content === '!setup-ticket') {
         if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return;
-
         await message.delete().catch(() => {});
 
         const ticketChannel = findTextChannel(message.guild, 'ticket-erstellen');
@@ -360,7 +354,6 @@ client.on('messageCreate', async (message) => {
             .setFooter({ text: 'NetRunner Support' });
 
         await ticketChannel.send({ embeds: [embed], components: [row] });
-
         if (message.channel.id !== ticketChannel.id) {
             await note(message.channel, `${radarEmote} Ticket-Button wurde in ${ticketChannel} gespawnt.`);
         }
@@ -389,8 +382,7 @@ client.on('messageCreate', async (message) => {
             .setFooter({ text: 'NetRunner Role Management' });
 
         const msg = await rolesChannel.send({ embeds: [embed] });
-        const emojis = ['🎮', '🤖', '🧠', '🔔', '🎲', '🎁'];
-        for (const e of emojis) {
+        for (const e of ['🎮', '🤖', '🧠', '🔔', '🎲', '🎁']) {
             await msg.react(e).catch(() => {});
         }
         return;
@@ -409,10 +401,7 @@ client.on('messageCreate', async (message) => {
             banned = await message.member.ban({
                 deleteMessageSeconds: 86400,
                 reason: `NetRunner: Phishing-Link (${hosts.join(', ')})`
-            }).then(() => true).catch((error) => {
-                console.error('[BAN FEHLGESCHLAGEN]', error);
-                return false;
-            });
+            }).then(() => true).catch(() => false);
         }
 
         await sendModLog(message.guild, new EmbedBuilder()
@@ -421,7 +410,7 @@ client.on('messageCreate', async (message) => {
             .addFields(
                 { name: 'User', value: `<@${message.author.id}> (${message.author.tag})`, inline: true },
                 { name: 'Kanal', value: `<#${message.channel.id}>`, inline: true },
-                { name: 'Ban', value: banned ? 'ausgeführt' : `${emoteText(message.guild, 'error', '⚠️')} nicht möglich`, inline: true },
+                { name: 'Ban', value: banned ? 'ausgeführt' : '⚠️ nicht möglich', inline: true },
                 { name: 'Host', value: hosts.join(', ').slice(0, 1000) },
                 { name: 'Nachricht', value: contentPreview || '—' }
             )
@@ -447,16 +436,10 @@ client.on('messageCreate', async (message) => {
 
     let timedOut = false;
     if (message.member.moderatable) {
-        timedOut = await message.member.timeout(TIMEOUT_MS, reason).then(() => true).catch((error) => {
-            console.error('[TIMEOUT FEHLGESCHLAGEN]', error);
-            return false;
-        });
+        timedOut = await message.member.timeout(TIMEOUT_MS, reason).then(() => true).catch(() => false);
     }
 
-    await note(
-        message.channel,
-        `${warningEmote} <@${message.author.id}>, ${caps ? 'Caps' : 'Spam'} ist nicht erlaubt. Timeout: 10 Minuten.`
-    );
+    await note(message.channel, `${warningEmote} <@${message.author.id}>, ${caps ? 'Caps' : 'Spam'} ist nicht erlaubt. Timeout: 10 Minuten.`);
 
     await sendModLog(message.guild, new EmbedBuilder()
         .setColor(0xFFA500)
@@ -464,7 +447,7 @@ client.on('messageCreate', async (message) => {
         .addFields(
             { name: 'User', value: `<@${message.author.id}>`, inline: true },
             { name: 'Kanal', value: `<#${message.channel.id}>`, inline: true },
-            { name: 'Timeout', value: timedOut ? '10 Minuten' : `${emoteText(message.guild, 'error', '⚠️')} nicht möglich`, inline: true },
+            { name: 'Timeout', value: timedOut ? '10 Minuten' : '⚠️ nicht möglich', inline: true },
             { name: 'Nachricht', value: message.content.slice(0, 1000) || '—' }
         )
         .setTimestamp());
@@ -498,34 +481,18 @@ client.on('interactionCreate', async (interaction) => {
                 { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
                 {
                     id: member.id,
-                    allow: [
-                        PermissionFlagsBits.ViewChannel,
-                        PermissionFlagsBits.SendMessages,
-                        PermissionFlagsBits.ReadMessageHistory,
-                        PermissionFlagsBits.AttachFiles
-                    ]
+                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles]
                 },
                 {
                     id: client.user.id,
-                    allow: [
-                        PermissionFlagsBits.ViewChannel,
-                        PermissionFlagsBits.SendMessages,
-                        PermissionFlagsBits.ManageChannels,
-                        PermissionFlagsBits.ReadMessageHistory
-                    ]
+                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ReadMessageHistory]
                 }
             ];
 
             if (teamRole) {
                 permissionOverwrites.push({
                     id: teamRole.id,
-                    allow: [
-                        PermissionFlagsBits.ViewChannel,
-                        PermissionFlagsBits.SendMessages,
-                        PermissionFlagsBits.ReadMessageHistory,
-                        PermissionFlagsBits.ManageMessages,
-                        PermissionFlagsBits.AttachFiles
-                    ]
+                    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageMessages, PermissionFlagsBits.AttachFiles]
                 });
             }
 
@@ -564,8 +531,7 @@ client.on('interactionCreate', async (interaction) => {
             }
         } catch (error) {
             console.error('[TICKET]', error);
-            const glitch = emoteText(guild, 'error', '⚠️');
-            await interaction.editReply({ content: `${glitch} Fehler beim Erstellen des Tickets.` }).catch(() => {});
+            await interaction.editReply({ content: '⚠️ Fehler beim Erstellen des Tickets.' }).catch(() => {});
         }
         return;
     }
@@ -587,4 +553,19 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
+// ==========================================
+// EXPRESS WEB-SERVER (Gegen das Einschlafen)
+// ==========================================
+const app = express();
+const port = process.env.PORT || 10000;
+
+app.get('/', (req, res) => {
+    res.send('NetRunner Bot ist online, wach und betriebsbereit!');
+});
+
+app.listen(port, () => {
+    console.log(`[HTTP] Express Webserver läuft auf Port ${port}`);
+});
+
+// Bot bei Discord einloggen
 client.login(process.env.DISCORD_TOKEN);
