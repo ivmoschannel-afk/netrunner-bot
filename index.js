@@ -1,3 +1,6 @@
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
+
 require('dotenv').config();
 const express = require('express');
 const {
@@ -489,12 +492,26 @@ client.on('error', (error) => {
     console.error('[DISCORD]', error.message);
 });
 
-const token = (process.env.DISCORD_TOKEN || '').trim();
+client.on('shardError', (error) => {
+    console.error('[DISCORD] Verbindung:', error.message);
+});
+
+const token = (process.env.DISCORD_TOKEN || '')
+    .trim()
+    .replace(/^['"]|['"]$/g, '')
+    .replace(/^Bot\s+/i, '')
+    .trim();
 
 if (!token) {
     console.error('[LOGIN] DISCORD_TOKEN fehlt. In Render unter Environment → DISCORD_TOKEN eintragen und neu deployen.');
 } else {
+    console.log('[LOGIN] Verbinde mit Discord...');
+    const loginWatch = setTimeout(() => {
+        console.error('[LOGIN] Keine Antwort von Discord. Die Verbindung haengt.');
+    }, 20000);
+    client.once('ready', () => clearTimeout(loginWatch));
     client.login(token).catch((error) => {
+        clearTimeout(loginWatch);
         console.error('[LOGIN] Discord hat das Token abgelehnt:', error.message);
         console.error('[LOGIN] Im Developer Portal unter Bot → Reset Token ein neues Token erzeugen, in Render als DISCORD_TOKEN speichern und neu deployen.');
     });
