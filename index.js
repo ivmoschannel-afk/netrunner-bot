@@ -52,6 +52,8 @@ const CONFIG = {
     DEFAULT_ROLE: 'Spieler',
     TEAM_ROLE: 'Mod',
     WEBSITE_URL: 'https://komisann.netlify.app/',
+    YOUTUBE_URL: 'https://www.youtube.com/@KomiSanN.Gaming',
+    TWITCH_URL: 'https://www.twitch.tv/komisann',
     EMOTES: {
         welcome: 'only_love_256px',
         protect: 'protect_256px',
@@ -303,7 +305,7 @@ client.on('messageReactionRemove', async (reaction, user) => {
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild || !message.member) return;
 
-    // NEU: Befehl !webseite
+    // Befehl !webseite
     if (message.content === '!webseite') {
         const linkEmote = emoteText(message.guild, 'link', '🔗');
         const embed = new EmbedBuilder()
@@ -311,6 +313,34 @@ client.on('messageCreate', async (message) => {
             .setTitle(`${linkEmote} KomisAnN & NetRunner Portal`)
             .setDescription(`Besuche unsere offizielle Webpräsenz für alle Infos, Updates und Projekte:\n\n👉 **[Hier geht es zur Website](${CONFIG.WEBSITE_URL})**`)
             .setFooter({ text: 'NetRunner Web Gateway' })
+            .setTimestamp();
+
+        await message.channel.send({ embeds: [embed] }).catch(() => {});
+        return;
+    }
+
+    // NEU: Befehl !youtube
+    if (message.content === '!youtube') {
+        const linkEmote = emoteText(message.guild, 'link', '📺');
+        const embed = new EmbedBuilder()
+            .setColor(0x39FF14)
+            .setTitle(`${linkEmote} KomisAnN YouTube-Kanal`)
+            .setDescription(`Schau dir die neuesten Let's Plays, Hardcore-Durchläufe und Dev-Einblicke an:\n\n👉 **[Zum YouTube-Kanal](${CONFIG.YOUTUBE_URL})**`)
+            .setFooter({ text: 'NetRunner Media Gateway' })
+            .setTimestamp();
+
+        await message.channel.send({ embeds: [embed] }).catch(() => {});
+        return;
+    }
+
+    // NEU: Befehl !twitch
+    if (message.content === '!twitch') {
+        const linkEmote = emoteText(message.guild, 'link', '🟣');
+        const embed = new EmbedBuilder()
+            .setColor(0x39FF14)
+            .setTitle(`${linkEmote} KomisAnN Twitch-Stream`)
+            .setDescription(`Sei live dabei bei unseren Streams, Gaming-Sessions und Coding-Projekten:\n\n👉 **[Zum Twitch-Kanal](${CONFIG.TWITCH_URL})**`)
+            .setFooter({ text: 'NetRunner Live Gateway' })
             .setTimestamp();
 
         await message.channel.send({ embeds: [embed] }).catch(() => {});
