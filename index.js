@@ -1,5 +1,20 @@
 const dns = require('dns');
+const net = require('net');
+
 dns.setDefaultResultOrder('ipv4first');
+if (typeof net.setDefaultAutoSelectFamily === 'function') {
+    net.setDefaultAutoSelectFamily(false);
+}
+
+const lookup = dns.lookup.bind(dns);
+dns.lookup = (hostname, options, callback) => {
+    if (typeof options === 'function') {
+        callback = options;
+        options = {};
+    }
+    const next = options && typeof options === 'object' ? { ...options, family: 4 } : { family: 4 };
+    return lookup(hostname, next, callback);
+};
 
 require('dotenv').config();
 const express = require('express');
@@ -506,9 +521,12 @@ if (!token) {
     console.error('[LOGIN] DISCORD_TOKEN fehlt. In Render unter Environment → DISCORD_TOKEN eintragen und neu deployen.');
 } else {
     console.log('[LOGIN] Verbinde mit Discord...');
+    const debug = (message) => console.log('[DISCORD]', message);
+    client.on('debug', debug);
+    client.once('ready', () => client.removeListener('debug', debug));
     const loginWatch = setTimeout(() => {
         console.error('[LOGIN] Keine Antwort von Discord. Die Verbindung haengt.');
-    }, 20000);
+    }, 45000);
     client.once('ready', () => clearTimeout(loginWatch));
     client.login(token).catch((error) => {
         clearTimeout(loginWatch);
