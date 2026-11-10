@@ -28,11 +28,7 @@ const TRUSTED_HOSTS = new Set([
     'steamcommunity.com',
     'store.steampowered.com',
     'steampowered.com',
-    's.team',
-    'youtube.com',
-    'youtu.be',
-    'twitch.tv',
-    'twitch.com'
+    's.team'
 ]);
 
 const client = new Client({
@@ -57,8 +53,6 @@ const CONFIG = {
     DEFAULT_ROLE: 'Spieler',
     TEAM_ROLE: 'Mod',
     WEBSITE_URL: 'https://komisann.netlify.app/',
-    YOUTUBE_URL: 'https://www.youtube.com/@komisann89',
-    TWITCH_URL: 'https://www.twitch.tv/komisann',
     EMOTES: {
         welcome: 'only_love_256px',
         protect: 'protect_256px',
@@ -318,32 +312,6 @@ client.on('messageCreate', async (message) => {
             .setTitle(`${linkEmote} KomisAnN & NetRunner Portal`)
             .setDescription(`Besuche unsere offizielle Webpräsenz für alle Infos, Updates und Projekte:\n\n👉 **[Hier geht es zur Website](${CONFIG.WEBSITE_URL})**`)
             .setFooter({ text: 'NetRunner Web Gateway' })
-            .setTimestamp();
-
-        await message.channel.send({ embeds: [embed] }).catch(() => {});
-        return;
-    }
-
-    if (message.content.trim().toLowerCase() === '!youtube') {
-        const linkEmote = emoteText(message.guild, 'link', '🔗');
-        const embed = new EmbedBuilder()
-            .setColor(0xFF0000)
-            .setTitle(`${linkEmote} KomisAnN auf YouTube`)
-            .setDescription(`Videos, Uploads und Updates:\n\n👉 **[YouTube öffnen](${CONFIG.YOUTUBE_URL})**`)
-            .setFooter({ text: 'NetRunner' })
-            .setTimestamp();
-
-        await message.channel.send({ embeds: [embed] }).catch(() => {});
-        return;
-    }
-
-    if (message.content.trim().toLowerCase() === '!twitch') {
-        const linkEmote = emoteText(message.guild, 'link', '🔗');
-        const embed = new EmbedBuilder()
-            .setColor(0x9146FF)
-            .setTitle(`${linkEmote} KomisAnN auf Twitch`)
-            .setDescription(`Live und VODs:\n\n👉 **[Twitch öffnen](${CONFIG.TWITCH_URL})**`)
-            .setFooter({ text: 'NetRunner' })
             .setTimestamp();
 
         await message.channel.send({ embeds: [embed] }).catch(() => {});
