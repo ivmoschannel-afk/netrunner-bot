@@ -27,7 +27,11 @@ const TRUSTED_HOSTS = new Set([
     'steamcommunity.com',
     'store.steampowered.com',
     'steampowered.com',
-    's.team'
+    's.team',
+    'youtube.com',
+    'youtu.be',
+    'twitch.tv',
+    'twitch.com'
 ]);
 
 const client = new Client({
@@ -52,7 +56,7 @@ const CONFIG = {
     DEFAULT_ROLE: 'Spieler',
     TEAM_ROLE: 'Mod',
     WEBSITE_URL: 'https://komisann.netlify.app/',
-    YOUTUBE_URL: 'https://www.youtube.com/@KomiSanN.Gaming',
+    YOUTUBE_URL: 'https://www.youtube.com/@komisann89',
     TWITCH_URL: 'https://www.twitch.tv/komisann',
     EMOTES: {
         welcome: 'only_love_256px',
@@ -72,6 +76,27 @@ const CONFIG = {
         full: 'full_256px'
     }
 };
+
+const EMOJI_NAMES = [
+    'bad_ping_256px',
+    'bann_bot_256px',
+    'blender_256px',
+    'boost_256px',
+    'brain_boom_256px',
+    'connect_256px',
+    'Fadenkreutz_256px',
+    'full_256px',
+    'Glitch_256px',
+    'king_256px',
+    'Knoten_256px',
+    'kristall_256px',
+    'lol_256px',
+    'my_nummer_1_256px',
+    'on_fire_256px',
+    'only_love_256px',
+    'protect_256px',
+    'Radar_256px'
+];
 
 const ROLE_MAPPING = {
     '🎮': '🎮 Gamer',
@@ -189,6 +214,12 @@ async function deleteSpamMessages(message, items) {
     }));
 }
 
+async function sendModLog(guild, embed) {
+    const channel = findTextChannel(guild, 'mod-log');
+    if (!channel) return;
+    await channel.send({ embeds: [embed] }).catch(() => {});
+}
+
 async function note(channel, text) {
     const sent = await channel.send(text).catch(() => null);
     if (sent) setTimeout(() => sent.delete().catch(() => {}), 8000);
@@ -278,7 +309,9 @@ client.on('messageReactionRemove', async (reaction, user) => {
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild || !message.member) return;
 
-    if (message.content === '!webseite') {
+    const command = message.content.trim().toLowerCase();
+
+    if (command === '!webseite') {
         const linkEmote = emoteText(message.guild, 'link', '🔗');
         const embed = new EmbedBuilder()
             .setColor(0x39FF14)
@@ -291,26 +324,26 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    if (message.content === '!youtube') {
-        const linkEmote = emoteText(message.guild, 'link', '📺');
+    if (command === '!youtube') {
+        const linkEmote = emoteText(message.guild, 'link', '🔗');
         const embed = new EmbedBuilder()
-            .setColor(0x39FF14)
-            .setTitle(`${linkEmote} KomisAnN YouTube-Kanal`)
-            .setDescription(`Schau dir die neuesten Let's Plays, Hardcore-Durchläufe und Dev-Einblicke an:\n\n👉 **[Zum YouTube-Kanal](${CONFIG.YOUTUBE_URL})**`)
-            .setFooter({ text: 'NetRunner Media Gateway' })
+            .setColor(0xFF0000)
+            .setTitle(`${linkEmote} KomisAnN auf YouTube`)
+            .setDescription(`Videos, Uploads und Updates:\n\n👉 **[YouTube öffnen](${CONFIG.YOUTUBE_URL})**`)
+            .setFooter({ text: 'NetRunner' })
             .setTimestamp();
 
         await message.channel.send({ embeds: [embed] }).catch(() => {});
         return;
     }
 
-    if (message.content === '!twitch') {
-        const linkEmote = emoteText(message.guild, 'link', '🟣');
+    if (command === '!twitch') {
+        const linkEmote = emoteText(message.guild, 'link', '🔗');
         const embed = new EmbedBuilder()
-            .setColor(0x39FF14)
-            .setTitle(`${linkEmote} KomisAnN Twitch-Stream`)
-            .setDescription(`Sei live dabei bei unseren Streams, Gaming-Sessions und Coding-Projekten:\n\n👉 **[Zum Twitch-Kanal](${CONFIG.TWITCH_URL})**`)
-            .setFooter({ text: 'NetRunner Live Gateway' })
+            .setColor(0x9146FF)
+            .setTitle(`${linkEmote} KomisAnN auf Twitch`)
+            .setDescription(`Live und VODs:\n\n👉 **[Twitch öffnen](${CONFIG.TWITCH_URL})**`)
+            .setFooter({ text: 'NetRunner' })
             .setTimestamp();
 
         await message.channel.send({ embeds: [embed] }).catch(() => {});
@@ -419,7 +452,7 @@ client.on('interactionCreate', async (interaction) => {
             
             await ticketChannel.send({
                 content: teamRole ? `${member} ${teamRole}` : `${member}`,
-                embeds: [new EmbedBuilder().setColor(0x39FF14).setTitle('🎯 Support-Ticket').setDescription('Sildere hier dein Anliegen.')],
+                embeds: [new EmbedBuilder().setColor(0x39FF14).setTitle('🎯 Support-Ticket').setDescription('Schildere hier dein Anliegen.')],
                 components: [closeBtn]
             });
             await interaction.editReply({ content: `📡 Ticket erstellt: ${ticketChannel}` });
@@ -436,6 +469,7 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
+// Express Web-Server für UptimeRobot (Verhindert das Einschlafen)
 const app = express();
 const port = process.env.PORT || 10000;
 
@@ -443,8 +477,12 @@ app.get('/', (req, res) => {
     res.send('NetRunner Bot ist online und wach!');
 });
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
     console.log(`[HTTP] Express Webserver läuft auf Port ${port}`);
+});
+
+server.on('error', (error) => {
+    console.error('[HTTP]', error.message);
 });
 
 client.login(process.env.DISCORD_TOKEN);
