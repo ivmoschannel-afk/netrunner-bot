@@ -485,4 +485,17 @@ server.on('error', (error) => {
     console.error('[HTTP]', error.message);
 });
 
-client.login(process.env.DISCORD_TOKEN);
+client.on('error', (error) => {
+    console.error('[DISCORD]', error.message);
+});
+
+const token = (process.env.DISCORD_TOKEN || '').trim();
+
+if (!token) {
+    console.error('[LOGIN] DISCORD_TOKEN fehlt. In Render unter Environment → DISCORD_TOKEN eintragen und neu deployen.');
+} else {
+    client.login(token).catch((error) => {
+        console.error('[LOGIN] Discord hat das Token abgelehnt:', error.message);
+        console.error('[LOGIN] Im Developer Portal unter Bot → Reset Token ein neues Token erzeugen, in Render als DISCORD_TOKEN speichern und neu deployen.');
+    });
+}
