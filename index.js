@@ -1,32 +1,3 @@
-const dns = require('dns');
-const net = require('net');
-const tls = require('tls');
-
-dns.setDefaultResultOrder('ipv4first');
-if (typeof net.setDefaultAutoSelectFamily === 'function') {
-    net.setDefaultAutoSelectFamily(false);
-}
-
-function forceIpv4(options) {
-    if (options && typeof options === 'object') {
-        options.family = 4;
-        options.autoSelectFamily = false;
-    }
-    return options;
-}
-
-const netConnect = net.connect;
-net.connect = function (...args) {
-    if (args[0] && typeof args[0] === 'object') forceIpv4(args[0]);
-    return netConnect.apply(this, args);
-};
-
-const tlsConnect = tls.connect;
-tls.connect = function (...args) {
-    if (typeof args[0] === 'object') forceIpv4(args[0]);
-    return tlsConnect.apply(this, args);
-};
-
 require('dotenv').config();
 const express = require('express');
 const {
@@ -72,11 +43,7 @@ const client = new Client({
         GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.GuildEmojisAndStickers
     ],
-    partials: [Partials.Message, Partials.Channel, Partials.Reaction],
-    rest: {
-        timeout: 10000,
-        retries: 1
-    }
+    partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
 const CONFIG = {
@@ -342,9 +309,8 @@ client.on('messageReactionRemove', async (reaction, user) => {
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild || !message.member) return;
 
-    const command = message.content.trim().toLowerCase();
-
-    if (command === '!webseite') {
+    // NEU: Befehl !webseite
+    if (message.content === '!webseite') {
         const linkEmote = emoteText(message.guild, 'link', '🔗');
         const embed = new EmbedBuilder()
             .setColor(0x39FF14)
@@ -357,7 +323,7 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    if (command === '!youtube') {
+    if (message.content.trim().toLowerCase() === '!youtube') {
         const linkEmote = emoteText(message.guild, 'link', '🔗');
         const embed = new EmbedBuilder()
             .setColor(0xFF0000)
@@ -370,7 +336,7 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    if (command === '!twitch') {
+    if (message.content.trim().toLowerCase() === '!twitch') {
         const linkEmote = emoteText(message.guild, 'link', '🔗');
         const embed = new EmbedBuilder()
             .setColor(0x9146FF)
@@ -510,59 +476,8 @@ app.get('/', (req, res) => {
     res.send('NetRunner Bot ist online und wach!');
 });
 
-const server = app.listen(port, () => {
+app.listen(port, () => {
     console.log(`[HTTP] Express Webserver läuft auf Port ${port}`);
 });
 
-server.on('error', (error) => {
-    console.error('[HTTP]', error.message);
-});
-
-client.on('error', (error) => {
-    console.error('[DISCORD]', error.message);
-});
-
-client.on('shardError', (error) => {
-    console.error('[DISCORD] Verbindung:', error.message);
-});
-
-const token = (process.env.DISCORD_TOKEN || '')
-    .trim()
-    .replace(/^['"]|['"]$/g, '')
-    .replace(/^Bot\s+/i, '')
-    .trim();
-
-if (!token) {
-    console.error('[LOGIN] DISCORD_TOKEN fehlt. In Render unter Environment → DISCORD_TOKEN eintragen und neu deployen.');
-} else {
-    console.log('[LOGIN] Verbinde mit Discord...');
-    const socket = tls.connect({
-        host: 'discord.com',
-        port: 443,
-        servername: 'discord.com',
-        family: 4,
-        timeout: 8000
-    });
-    socket.once('secureConnect', () => {
-        console.log('[LOGIN] Discord erreichbar ueber', socket.remoteAddress);
-        socket.end();
-    });
-    socket.once('timeout', () => {
-        console.error('[LOGIN] Discord Timeout. Keine Verbindung zu', socket.remoteAddress || 'discord.com');
-        socket.destroy();
-    });
-    socket.once('error', (error) => {
-        console.error('[LOGIN] Discord', error.code || error.message);
-    });
-    const debug = (message) => console.log('[DISCORD]', message);
-    client.on('debug', debug);
-    client.once('ready', () => client.removeListener('debug', debug));
-    const loginWatch = setTimeout(() => {
-        console.error('[LOGIN] Keine Antwort von Discord. Die Verbindung haengt.');
-    }, 20000);
-    client.once('ready', () => clearTimeout(loginWatch));
-    client.login(token).catch((error) => {
-        clearTimeout(loginWatch);
-        console.error('[LOGIN]', error.message);
-    });
-}
+client.login(process.env.DISCORD_TOKEN);
