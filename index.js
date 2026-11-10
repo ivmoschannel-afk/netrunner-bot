@@ -480,4 +480,6 @@ app.listen(port, () => {
     console.log(`[HTTP] Express Webserver läuft auf Port ${port}`);
 });
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(process.env.DISCORD_TOKEN).catch((error) => {
+    console.error('[LOGIN]', error.message);
+});
