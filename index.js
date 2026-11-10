@@ -1,19 +1,30 @@
 const dns = require('dns');
 const net = require('net');
+const tls = require('tls');
 
 dns.setDefaultResultOrder('ipv4first');
 if (typeof net.setDefaultAutoSelectFamily === 'function') {
     net.setDefaultAutoSelectFamily(false);
 }
 
-const lookup = dns.lookup.bind(dns);
-dns.lookup = (hostname, options, callback) => {
-    if (typeof options === 'function') {
-        callback = options;
-        options = {};
+function forceIpv4(options) {
+    if (options && typeof options === 'object') {
+        options.family = 4;
+        options.autoSelectFamily = false;
     }
-    const next = options && typeof options === 'object' ? { ...options, family: 4 } : { family: 4 };
-    return lookup(hostname, next, callback);
+    return options;
+}
+
+const netConnect = net.connect;
+net.connect = function (...args) {
+    if (args[0] && typeof args[0] === 'object') forceIpv4(args[0]);
+    return netConnect.apply(this, args);
+};
+
+const tlsConnect = tls.connect;
+tls.connect = function (...args) {
+    if (typeof args[0] === 'object') forceIpv4(args[0]);
+    return tlsConnect.apply(this, args);
 };
 
 require('dotenv').config();
@@ -61,7 +72,11 @@ const client = new Client({
         GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.GuildEmojisAndStickers
     ],
-    partials: [Partials.Message, Partials.Channel, Partials.Reaction]
+    partials: [Partials.Message, Partials.Channel, Partials.Reaction],
+    rest: {
+        timeout: 10000,
+        retries: 1
+    }
 });
 
 const CONFIG = {
@@ -521,16 +536,33 @@ if (!token) {
     console.error('[LOGIN] DISCORD_TOKEN fehlt. In Render unter Environment → DISCORD_TOKEN eintragen und neu deployen.');
 } else {
     console.log('[LOGIN] Verbinde mit Discord...');
+    const socket = tls.connect({
+        host: 'discord.com',
+        port: 443,
+        servername: 'discord.com',
+        family: 4,
+        timeout: 8000
+    });
+    socket.once('secureConnect', () => {
+        console.log('[LOGIN] Discord erreichbar ueber', socket.remoteAddress);
+        socket.end();
+    });
+    socket.once('timeout', () => {
+        console.error('[LOGIN] Discord Timeout. Keine Verbindung zu', socket.remoteAddress || 'discord.com');
+        socket.destroy();
+    });
+    socket.once('error', (error) => {
+        console.error('[LOGIN] Discord', error.code || error.message);
+    });
     const debug = (message) => console.log('[DISCORD]', message);
     client.on('debug', debug);
     client.once('ready', () => client.removeListener('debug', debug));
     const loginWatch = setTimeout(() => {
         console.error('[LOGIN] Keine Antwort von Discord. Die Verbindung haengt.');
-    }, 45000);
+    }, 20000);
     client.once('ready', () => clearTimeout(loginWatch));
     client.login(token).catch((error) => {
         clearTimeout(loginWatch);
-        console.error('[LOGIN] Discord hat das Token abgelehnt:', error.message);
-        console.error('[LOGIN] Im Developer Portal unter Bot → Reset Token ein neues Token erzeugen, in Render als DISCORD_TOKEN speichern und neu deployen.');
+        console.error('[LOGIN]', error.message);
     });
 }
