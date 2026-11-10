@@ -73,27 +73,6 @@ const CONFIG = {
     }
 };
 
-const EMOJI_NAMES = [
-    'bad_ping_256px',
-    'bann_bot_256px',
-    'blender_256px',
-    'boost_256px',
-    'brain_boom_256px',
-    'connect_256px',
-    'Fadenkreutz_256px',
-    'full_256px',
-    'Glitch_256px',
-    'king_256px',
-    'Knoten_256px',
-    'kristall_256px',
-    'lol_256px',
-    'my_nummer_1_256px',
-    'on_fire_256px',
-    'only_love_256px',
-    'protect_256px',
-    'Radar_256px'
-];
-
 const ROLE_MAPPING = {
     '🎮': '🎮 Gamer',
     '🤖': '🤖 KI-Skripter',
@@ -210,12 +189,6 @@ async function deleteSpamMessages(message, items) {
     }));
 }
 
-async function sendModLog(guild, embed) {
-    const channel = findTextChannel(guild, 'mod-log');
-    if (!channel) return;
-    await channel.send({ embeds: [embed] }).catch(() => {});
-}
-
 async function note(channel, text) {
     const sent = await channel.send(text).catch(() => null);
     if (sent) setTimeout(() => sent.delete().catch(() => {}), 8000);
@@ -305,7 +278,6 @@ client.on('messageReactionRemove', async (reaction, user) => {
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild || !message.member) return;
 
-    // Befehl !webseite
     if (message.content === '!webseite') {
         const linkEmote = emoteText(message.guild, 'link', '🔗');
         const embed = new EmbedBuilder()
@@ -319,7 +291,6 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // NEU: Befehl !youtube
     if (message.content === '!youtube') {
         const linkEmote = emoteText(message.guild, 'link', '📺');
         const embed = new EmbedBuilder()
@@ -333,7 +304,6 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // NEU: Befehl !twitch
     if (message.content === '!twitch') {
         const linkEmote = emoteText(message.guild, 'link', '🟣');
         const embed = new EmbedBuilder()
@@ -466,7 +436,6 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
-// Express Web-Server für UptimeRobot (Verhindert das Einschlafen)
 const app = express();
 const port = process.env.PORT || 10000;
 
