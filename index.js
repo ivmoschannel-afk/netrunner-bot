@@ -1,4 +1,3 @@
-require('dotenv').config({ path: '/etc/secrets/.env' });
 require('dotenv').config();
 const express = require('express');
 const {
@@ -420,7 +419,7 @@ client.on('interactionCreate', async (interaction) => {
             
             await ticketChannel.send({
                 content: teamRole ? `${member} ${teamRole}` : `${member}`,
-                embeds: [new EmbedBuilder().setColor(0x39FF14).setTitle('🎯 Support-Ticket').setDescription('Schildere hier dein Anliegen.')],
+                embeds: [new EmbedBuilder().setColor(0x39FF14).setTitle('🎯 Support-Ticket').setDescription('Sildere hier dein Anliegen.')],
                 components: [closeBtn]
             });
             await interaction.editReply({ content: `📡 Ticket erstellt: ${ticketChannel}` });
@@ -449,13 +448,4 @@ app.listen(port, () => {
     console.log(`[HTTP] Express Webserver läuft auf Port ${port}`);
 });
 
-console.log('[BOOT] Node', process.version);
-
-const token = (process.env.DISCORD_TOKEN || '').trim();
-if (!token) {
-    console.error('[LOGIN] DISCORD_TOKEN fehlt.');
-} else {
-    client.login(token).catch((error) => {
-        console.error('[LOGIN]', error.message);
-    });
-}
+client.login(process.env.DISCORD_TOKEN);
